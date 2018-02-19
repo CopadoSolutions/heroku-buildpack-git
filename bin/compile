@@ -1,95 +1,97 @@
 #!/usr/bin/env bash
 # bin/compile <build-dir> <cache-dir>
 
-set -e            # fail fast
-set -o pipefail   # don't ignore exit codes when piping output
-# set -x          # enable debugging
+# fail fast
+set -e
 
-# Configure directories
-build_dir=$1
-cache_dir=$2
-env_dir=$3
+# debug
+# set -x
 
-bp_dir=$(cd $(dirname $0); cd ..; pwd)
+# parse and derive params
+BUILD_DIR=$1
+CACHE_DIR=$2
+ENV_DIR=$3
 
-# clean up leaking environment
-unset GIT_DIR
+LP_DIR=`cd $(dirname $0); cd ..; pwd`
 
-# Load some convenience functions like status(), echo(), and indent()
-source $bp_dir/bin/common.sh
+function error() {
+  echo " !     $*" >&2
+  exit 1
+}
 
-source "$build_dir/_git.cfg"
+function topic() {
+  echo "-----> $*"
+}
 
-if [ $GIT_VERSION ] && [ ! $git_version ]; then
-  git_version=$GIT_VERSION
-fi
+function indent() {
+  c='s/^/       /'
+  case $(uname) in
+    Darwin) sed -l "$c";;
+    *)      sed -u "$c";;
+  esac
+}
 
-# Recommend using semver ranges in a safe manner
-if [ ! $git_version ]; then
-  protip "You can specify a git version in _git.cfg"
-  git_version=""
-elif [ "$git_version" == "*" ]; then
-  protip "Avoid using ranges like '*' in _git.cfg"
-  git_version=""
-elif [ ${git_version:0:1} == ">" ]; then
-  protip "Avoid using ranges starting with '>' in _git.cfg"
-  git_version=""
-fi
+stack=${STACK:-heroku-16}
 
-# Output info about requested version and resolved git version
-if [ "$git_version" == "" ]; then
-  git_version="master"
-  git_url="https://github.com/git/git/archive/master.tar.gz"
-  status "Defaulting to latest master branch"
-else
-  git_url="https://github.com/git/git/archive/v$git_version.tar.gz"
-  status "Requested git version: $git_version"
-fi
+PACKAGES='git=1:2.14.2-1'
 
-git_src_dir="git-$git_version"
+indent "Installing packages..."
 
-bin_dir=$build_dir/vendor/git
+APT_CACHE_DIR="$CACHE_DIR/apt/cache"
+APT_STATE_DIR="$CACHE_DIR/apt/state"
 
-mkdir -p "$bin_dir"
+mkdir -p "$APT_CACHE_DIR/archives/partial"
+mkdir -p "$APT_STATE_DIR/lists/partial"
 
-if [ "$git_version" == "master" ] || ! test -d $cache_dir/git || ! test -f $cache_dir/git/.heroku/git-version || [ $(cat $cache_dir/git/.heroku/git-version) != "$git_version" ]; then
-  status "Git version changed since last build; rebuilding dependencies"
+add-apt-repository ppa:git-core/ppa
 
-  # Persist goodies like git-version in the slug
-  mkdir -p $build_dir/.heroku
+APT_OPTIONS="-o debug::nolocking=true -o dir::cache=$APT_CACHE_DIR -o dir::state=$APT_STATE_DIR"
 
-  # Save resolved git version in the slug for later reference
-  echo $git_version > $build_dir/.heroku/git-version
+topic "Updating apt caches"
+apt-get $APT_OPTIONS update | indent
 
-  # Purge git-related cached content, being careful not to purge the top-level
-  # cache, for the sake of heroku-buildpack-multi apps.
-  status "Cleaning cached Git version..."
-  rm -rf $cache_dir/git
+for PACKAGE in $PACKAGES; do
+  if [[ $PACKAGE == *deb ]]; then
+    PACKAGE_NAME=$(basename $PACKAGE .deb)
+    PACKAGE_FILE=$APT_CACHE_DIR/archives/$PACKAGE_NAME.deb
 
-  status "Downloading Git $git_version..."
-  curl $git_url -sL -o - | tar xzf - -C $build_dir
-  cd "$build_dir"
-  cd $git_src_dir
+    topic "Fetching $PACKAGE"
+    curl -s -L -z $PACKAGE_FILE -o $PACKAGE_FILE $PACKAGE 2>&1 | indent
+  else
+    topic "Fetching .debs for $PACKAGE"
+    apt-get $APT_OPTIONS -y --force-yes -d install --reinstall $PACKAGE | indent
+  fi
+done
 
-  status "Compiling Git..."
-  make NO_TCLTK=YesPlease NO_PERL=YesPlease NO_GETTEXT=YesPlease NO_SVN_TESTS=YesPlease NO_MSGFMT=YesPlease NO_MSGFMT_EXTENDED_OPTIONS=YesPlease CFLAGS="-Os -g0 -Wall" prefix="$bin_dir" install clean | indent
-  status "Git was Installed at: $bin_dir"
+mkdir -p $BUILD_DIR/.apt
 
-  status "Cleaning up Git source files..."
-  cd ..
-  rm -rf $git_src_dir
+for DEB in $(ls -1 $APT_CACHE_DIR/archives/*.deb); do
+  topic "Installing $(basename $DEB)"
+  dpkg -x $DEB $BUILD_DIR/.apt/
+done
 
-  status "Caching Git binaries..."
-  cp -R "$bin_dir" "$cache_dir"
-  # Copy goodies to the cache
-  cp -r $build_dir/.heroku $cache_dir/git
+topic "Writing profile script"
+mkdir -p $BUILD_DIR/.profile.d
+cat <<EOF >$BUILD_DIR/.profile.d/000_apt.sh
+export PATH="\$HOME/.apt/usr/bin:\$PATH"
+export LD_LIBRARY_PATH="\$HOME/.apt/usr/lib/x86_64-linux-gnu:\$HOME/.apt/usr/lib/i386-linux-gnu:\$HOME/.apt/usr/lib:\$LD_LIBRARY_PATH"
+export LIBRARY_PATH="\$HOME/.apt/usr/lib/x86_64-linux-gnu:\$HOME/.apt/usr/lib/i386-linux-gnu:\$HOME/.apt/usr/lib:\$LIBRARY_PATH"
+export INCLUDE_PATH="\$HOME/.apt/usr/include:\$HOME/.apt/usr/include/x86_64-linux-gnu:\$INCLUDE_PATH"
+export CPATH="\$INCLUDE_PATH"
+export CPPPATH="\$INCLUDE_PATH"
+export PKG_CONFIG_PATH="\$HOME/.apt/usr/lib/x86_64-linux-gnu/pkgconfig:\$HOME/.apt/usr/lib/i386-linux-gnu/pkgconfig:\$HOME/.apt/usr/lib/pkgconfig:\$PKG_CONFIG_PATH"
+EOF
 
-else
-  status "Using cached Git $git_version..."
-  cp -R "$cache_dir/git" "$build_dir/vendor"
-fi
+export PATH="$BUILD_DIR/.apt/usr/bin:$PATH"
+export LD_LIBRARY_PATH="$BUILD_DIR/.apt/usr/lib/x86_64-linux-gnu:$BUILD_DIR/.apt/usr/lib/i386-linux-gnu:$BUILD_DIR/.apt/usr/lib:$LD_LIBRARY_PATH"
+export LIBRARY_PATH="$BUILD_DIR/.apt/usr/lib/x86_64-linux-gnu:$BUILD_DIR/.apt/usr/lib/i386-linux-gnu:$BUILD_DIR/.apt/usr/lib:$LIBRARY_PATH"
+export INCLUDE_PATH="$BUILD_DIR/.apt/usr/include:$BUILD_DIR/.apt/usr/include/x86_64-linux-gnu:$INCLUDE_PATH"
+export CPATH="$INCLUDE_PATH"
+export CPPPATH="$INCLUDE_PATH"
+export PKG_CONFIG_PATH="$BUILD_DIR/.apt/usr/lib/x86_64-linux-gnu/pkgconfig:$BUILD_DIR/.apt/usr/lib/i386-linux-gnu/pkgconfig:$BUILD_DIR/.apt/usr/lib/pkgconfig:$PKG_CONFIG_PATH"
 
-# Update the PATH
-status "Building runtime environment"
-mkdir -p $build_dir/.profile.d
-echo "export PATH=\"\$HOME/vendor/git/bin:\$HOME/vendor/git/libexec/git-core:\$PATH\";" > $build_dir/.profile.d/git.sh
+#give environment to later buildpacks
+export | grep -E -e ' (PATH|LD_LIBRARY_PATH|LIBRARY_PATH|INCLUDE_PATH|CPATH|CPPPATH|PKG_CONFIG_PATH)='  > "$LP_DIR/export"
+
+topic "Rewrite package-config files"
+find $BUILD_DIR/.apt -type f -ipath '*/pkgconfig/*.pc' | xargs --no-run-if-empty -n 1 sed -i -e 's!^prefix=\(.*\)$!prefix='"$BUILD_DIR"'/.apt\1!g'
