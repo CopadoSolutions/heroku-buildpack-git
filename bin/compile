@@ -43,9 +43,14 @@ APT_STATE_DIR="$CACHE_DIR/apt/state"
 mkdir -p "$APT_CACHE_DIR/archives/partial"
 mkdir -p "$APT_STATE_DIR/lists/partial"
 
-add-apt-repository ppa:git-core/ppa
 
 APT_OPTIONS="-o debug::nolocking=true -o dir::cache=$APT_CACHE_DIR -o dir::state=$APT_STATE_DIR"
+
+apt-get $APT_OPTIONS update | indent
+
+apt-get install software-properties-common python-software-properties
+
+add-apt-repository ppa:git-core/ppa
 
 topic "Updating apt caches"
 apt-get $APT_OPTIONS update | indent
