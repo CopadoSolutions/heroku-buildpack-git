@@ -57,17 +57,15 @@ apt-cache $APT_OPTIONS policy git
 topic "Fetching .debs for git"
 apt-get $APT_OPTIONS --allow-unauthenticated -y --force-yes --no-install-recommends -d install --reinstall git=1:2.14.2-1~ppa0~ubuntu15.04.1 | indent
 
-mkdir -p $BUILD_DIR/.apt
-
 for DEB in $(ls -1 $APT_CACHE_DIR/archives/*.deb); do
   topic "Installing $(basename $DEB)"
   dpkg -x $DEB $BUILD_DIR/.apt/
 done
 
 
-export PATH="$BUILD_DIR/.apt/usr/bin:$PATH"
-export LD_LIBRARY_PATH="$BUILD_DIR/.apt/usr/lib:$LD_LIBRARY_PATH"
-export LIBRARY_PATH="$BUILD_DIR/.apt/usr/lib:$BUILD_DIR/.apt/usr/lib/git-core:$LIBRARY_PATH"
+export PATH="/app/.apt/usr/bin:$PATH"
+export LD_LIBRARY_PATH="/app/.apt/usr/lib:$LD_LIBRARY_PATH"
+export LIBRARY_PATH="/app/.apt/usr/lib:/app/.apt/usr/lib/git-core:$LIBRARY_PATH"
 export CPATH="$INCLUDE_PATH"
 export CPPPATH="$INCLUDE_PATH"
 
@@ -79,9 +77,12 @@ git --version
 topic "Writing profile script"
 mkdir -p $BUILD_DIR/.profile.d
 cat <<EOF > $BUILD_DIR/.profile.d/git.sh
-export PATH="$BUILD_DIR/.apt/usr/bin/bin:$PATH"
-export LD_LIBRARY_PATH="$BUILD_DIR/.apt/usr/lib:$LD_LIBRARY_PATH"
-export LIBRARY_PATH="$BUILD_DIR/.apt/usr/lib:$BUILD_DIR/.apt/usr/lib/git-core:$LIBRARY_PATH"
+export PATH="/app/.apt/usr/bin/bin:$PATH"
+export LD_LIBRARY_PATH="/app.apt/usr/lib:$LD_LIBRARY_PATH"
+export LIBRARY_PATH="$BUILD_DIR/.apt/usr/lib:/app/.apt/usr/lib/git-core:$LIBRARY_PATH"
 export CPATH="$INCLUDE_PATH"
 export CPPPATH="$INCLUDE_PATH"
 EOF
+
+#give environment to later buildpacks
+export | grep -E -e ' (PATH|LD_LIBRARY_PATH|LIBRARY_PATH|INCLUDE_PATH|CPATH|CPPPATH|PKG_CONFIG_PATH)='  > "$LP_DIR/export"
