@@ -65,7 +65,7 @@ done
 
 export PATH="/app/.apt/usr/bin:$PATH"
 export LD_LIBRARY_PATH="/app/.apt/usr/lib:$LD_LIBRARY_PATH"
-export LIBRARY_PATH="/app/.apt/usr/lib:/app/.apt/usr/lib/git-core:$LIBRARY_PATH"
+export LIBRARY_PATH="/app/.apt/usr/lib:/app/.apt/usr/lib/git-core:/app/.apt/usr/lib/i386-linux-gnu:$LIBRARY_PATH"
 export CPATH="$INCLUDE_PATH"
 export CPPPATH="$INCLUDE_PATH"
 
