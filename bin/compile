@@ -83,4 +83,4 @@ echo "### checking... $LP_DIR/export"
 cat "$LP_DIR/export"
 git --version
 which git
-exit 1
+
