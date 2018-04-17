@@ -77,5 +77,8 @@ EOF
 #give environment to later buildpacks
 export | grep -E -e ' (PATH|LD_LIBRARY_PATH|LIBRARY_PATH|INCLUDE_PATH|CPATH|CPPPATH|PKG_CONFIG_PATH)='  > "$LP_DIR/export"
 
+echo "### checking... $LP_DIR/export"
+cat "$LP_DIR/export"
 git --version
 which git
+exit 1
