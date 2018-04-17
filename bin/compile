@@ -41,8 +41,8 @@ APT_OPTIONS="-o debug::nolocking=true -o dir::cache=$APT_CACHE_DIR -o dir::state
 
 topic "Adding git-core PPA"
 cp /etc/apt/sources.list $APT_SOURCES_LIST
-#echo "deb http://ppa.launchpad.net/git-core/ppa/ubuntu xenial main" >> $APT_SOURCES_LIST
-echo "deb http://ppa.launchpad.net/git-core/ppa/ubuntu vivid main" >> $APT_SOURCES_LIST
+echo "deb http://ppa.launchpad.net/git-core/ppa/ubuntu xenial main" >> $APT_SOURCES_LIST
+#echo "deb http://ppa.launchpad.net/git-core/ppa/ubuntu vivid main" >> $APT_SOURCES_LIST
 
 topic "Cleaning apt caches"
 apt-get $APT_OPTIONS --allow-unauthenticated clean | indent
