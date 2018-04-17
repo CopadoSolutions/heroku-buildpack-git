@@ -74,8 +74,10 @@ EOF
 
 . $BUILD_DIR/.profile.d/git.sh
 
+cp $BUILD_DIR/.profile.d/git.sh "$LP_DIR/export"
+
 #give environment to later buildpacks
-export | grep -E -e ' (PATH|LD_LIBRARY_PATH|LIBRARY_PATH|INCLUDE_PATH|CPATH|CPPPATH|PKG_CONFIG_PATH)='  > "$LP_DIR/export"
+#export | grep -E -e ' (PATH|LD_LIBRARY_PATH|LIBRARY_PATH|INCLUDE_PATH|CPATH|CPPPATH|PKG_CONFIG_PATH)='  > "$LP_DIR/export"
 
 echo "### checking... $LP_DIR/export"
 cat "$LP_DIR/export"
