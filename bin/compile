@@ -70,6 +70,8 @@ export LD_LIBRARY_PATH="/app/.apt/usr/lib:/app/.apt/usr/lib/x86_64-linux-gnu:$LD
 export LIBRARY_PATH="/app/.apt/usr/lib:/app/.apt/usr/lib/git-core:$LIBRARY_PATH"
 export CPATH="$INCLUDE_PATH"
 export CPPPATH="$INCLUDE_PATH"
+export GIT_CONFIG_NOSYSTEM=1
+export GIT_EXEC_PATH=/app/.apt/usr/lib/git-core/
 EOF
 
 . $BUILD_DIR/.profile.d/git.sh
