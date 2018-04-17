@@ -62,28 +62,20 @@ for DEB in $(ls -1 $APT_CACHE_DIR/archives/*.deb); do
   dpkg -x $DEB $BUILD_DIR/.apt/
 done
 
-
+topic "Writing profile script"
+mkdir -p $BUILD_DIR/.profile.d
+cat <<EOF > $BUILD_DIR/.profile.d/git.sh
 export PATH="/app/.apt/usr/bin:$PATH"
 export LD_LIBRARY_PATH="/app/.apt/usr/lib:$LD_LIBRARY_PATH"
 export LIBRARY_PATH="/app/.apt/usr/lib:/app/.apt/usr/lib/git-core:/app/.apt/usr/lib/i386-linux-gnu:$LIBRARY_PATH"
 export CPATH="$INCLUDE_PATH"
 export CPPPATH="$INCLUDE_PATH"
-
-git --version
-which git
-
-# give environment to later buildpacks
-#export | grep -E -e ' (PATH|LD_LIBRARY_PATH|LIBRARY_PATH|INCLUDE_PATH|CPATH|CPPPATH|PKG_CONFIG_PATH)='  > "$LP_DIR/export"
-
-topic "Writing profile script"
-mkdir -p $BUILD_DIR/.profile.d
-cat <<EOF > $BUILD_DIR/.profile.d/git.sh
-export PATH="/app/.apt/usr/bin/bin:$PATH"
-export LD_LIBRARY_PATH="/app.apt/usr/lib:$LD_LIBRARY_PATH"
-export LIBRARY_PATH="$BUILD_DIR/.apt/usr/lib:/app/.apt/usr/lib/git-core:$LIBRARY_PATH"
-export CPATH="$INCLUDE_PATH"
-export CPPPATH="$INCLUDE_PATH"
 EOF
+
+. $BUILD_DIR/.profile.d/git.sh
 
 #give environment to later buildpacks
 export | grep -E -e ' (PATH|LD_LIBRARY_PATH|LIBRARY_PATH|INCLUDE_PATH|CPATH|CPPPATH|PKG_CONFIG_PATH)='  > "$LP_DIR/export"
+
+git --version
+which git
