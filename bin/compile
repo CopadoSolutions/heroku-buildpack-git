@@ -2,6 +2,7 @@
 # bin/compile <build-dir> <cache-dir>
 
 # fail fast
+# NOTE: pipes ( | ) will make this useless, so do not use them.
 set -e
 
 # debug
@@ -12,22 +13,10 @@ BUILD_DIR=$1
 CACHE_DIR=$2
 LP_DIR=`cd $(dirname $0); cd ..; pwd`
 
-function error() {
-  echo " !     $*" >&2
-  exit 1
-}
-
 function topic() {
   echo "-----> $*"
 }
 
-function indent() {
-  c='s/^/       /'
-  case $(uname) in
-    Darwin) sed -l "$c";;
-    *)      sed -u "$c";;
-  esac
-}
 
 APT_CACHE_DIR="$CACHE_DIR/apt/cache"
 APT_STATE_DIR="$CACHE_DIR/apt/state"
@@ -42,20 +31,19 @@ APT_OPTIONS="-o debug::nolocking=true -o dir::cache=$APT_CACHE_DIR -o dir::state
 topic "Adding git-core PPA"
 cp /etc/apt/sources.list $APT_SOURCES_LIST
 echo "deb http://ppa.launchpad.net/git-core/ppa/ubuntu xenial main" >> $APT_SOURCES_LIST
-#echo "deb http://ppa.launchpad.net/git-core/ppa/ubuntu vivid main" >> $APT_SOURCES_LIST
 
 topic "Cleaning apt caches"
-apt-get $APT_OPTIONS --allow-unauthenticated clean | indent
+apt-get $APT_OPTIONS --allow-unauthenticated clean
 
 topic "Updating apt caches"
-apt-get $APT_OPTIONS --allow-unauthenticated update | indent
+apt-get $APT_OPTIONS --allow-unauthenticated update
 
 apt-cache $APT_OPTIONS madison git
 
 apt-cache $APT_OPTIONS policy git
 
 topic "Fetching .debs for git"
-apt-get $APT_OPTIONS --allow-unauthenticated -y --force-yes --no-install-recommends -d install --reinstall git=1:2.17.1-1~ppa0~ubuntu16.04.1 | indent
+apt-get $APT_OPTIONS --allow-unauthenticated -y --force-yes --no-install-recommends -d install --reinstall git=1:2.17.1-1~ppa0~ubuntu16.04.1
 
 for DEB in $(ls -1 $APT_CACHE_DIR/archives/*.deb); do
   topic "Installing $(basename $DEB)"
