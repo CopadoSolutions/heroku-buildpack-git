@@ -45,17 +45,17 @@ echo "deb http://ppa.launchpad.net/git-core/ppa/ubuntu xenial main" >> $APT_SOUR
 #echo "deb http://ppa.launchpad.net/git-core/ppa/ubuntu vivid main" >> $APT_SOURCES_LIST
 
 topic "Cleaning apt caches"
-apt-get $APT_OPTIONS --allow-unauthenticated clean | indent
+apt-get $APT_OPTIONS --allow-unauthenticated clean
 
 topic "Updating apt caches"
-apt-get $APT_OPTIONS --allow-unauthenticated update | indent
+apt-get $APT_OPTIONS --allow-unauthenticated update
 
 apt-cache $APT_OPTIONS madison git
 
 apt-cache $APT_OPTIONS policy git
 
 topic "Fetching .debs for git"
-apt-get $APT_OPTIONS --allow-unauthenticated -y --force-yes --no-install-recommends -d install --reinstall git=1:2.17.1-1~ppa0~ubuntu16.04.1 | indent
+apt-get $APT_OPTIONS --allow-unauthenticated -y --force-yes --no-install-recommends -d install --reinstall git=1:2.17.1-0~ppa0~ubuntu16.04.1
 
 for DEB in $(ls -1 $APT_CACHE_DIR/archives/*.deb); do
   topic "Installing $(basename $DEB)"
